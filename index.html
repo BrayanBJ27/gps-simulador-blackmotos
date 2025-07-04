@@ -165,7 +165,7 @@
             
             try {
                 const apiUrl = apiUrlInput.value.trim();
-                await makeRequest(`${apiUrl}/test`);
+                await makeRequest(`${apiUrl}/rastreo`);
                 updateStatus('Conexión exitosa', 'success');
             } catch (error) {
                 updateStatus(`Error de conexión: ${error.message}`, 'error');
