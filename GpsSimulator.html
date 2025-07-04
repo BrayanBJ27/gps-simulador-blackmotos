@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlackMotos - Simulador GPS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+        <h1 class="text-2xl font-bold mb-2">Simulador GPS</h1>
+        <p class="text-gray-400 mb-6">BlackMotos System</p>
+
+        <div class="space-y-4">
+            <div>
+                <label for="motoSelect" class="block text-sm font-medium text-gray-300 mb-1 text-left">Seleccionar Moto</label>
+                <select id="motoSelect" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"></select>
+            </div>
+            <div>
+                <label for="tokenInput" class="block text-sm font-medium text-gray-300 mb-1 text-left">Token de Autenticación (JWT)</label>
+                <input type="text" id="tokenInput" placeholder="Pega el token JWT aquí" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+            </div>
+        </div>
+
+        <button id="startButton" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-transform transform hover:scale-105 mt-8">
+            Iniciar Rastreo
+        </button>
+        <button id="stopButton" class="w-full bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 transition-transform transform hover:scale-105 mt-4" style="display: none;">
+            Detener Rastreo
+        </button>
+
+        <div id="status" class="mt-6 text-sm text-gray-400 h-10">
+            Esperando para iniciar...
+        </div>
+    </div>
+
+    <script>
+        const motoSelect = document.getElementById('motoSelect');
+        const tokenInput = document.getElementById('tokenInput');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusDiv = document.getElementById('status');
+        let watchId = null;
+
+        const API_BASE_URL = 'https://2472-2800-bf0-7a-1006-7de1-ac47-af46-9783.ngrok-free.app/api';
+
+        // Función para obtener la lista de motos
+        async function fetchMotos() {
+            const token = tokenInput.value;
+            if (!token) {
+                alert('Por favor, ingresa el token de autenticación.');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/rastreo`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('No se pudo obtener la lista de motos. Revisa el token.');
+                const motos = await response.json();
+                motoSelect.innerHTML = '<option value="">-- Selecciona una moto --</option>';
+                motos.forEach(moto => {
+                    const option = document.createElement('option');
+                    option.value = moto.id;
+                    option.textContent = `${moto.marca} ${moto.modelo} (${moto.placa})`;
+                    motoSelect.appendChild(option);
+                });
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.classList.add('text-red-500');
+            }
+        }
+
+        // Cargar motos cuando se pegue un token
+        tokenInput.addEventListener('paste', () => setTimeout(fetchMotos, 100));
+        tokenInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') fetchMotos();
+        });
+
+
+        // Función para enviar la ubicación
+        async function sendLocation(position) {
+            const motoId = motoSelect.value;
+            const token = tokenInput.value;
+            if (!motoId || !token) return;
+
+            const { latitude, longitude } = position.coords;
+            const data = { motoId: Number(motoId), lat: latitude, lon: longitude };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/rastreo/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    statusDiv.textContent = `Ubicación enviada: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+                    statusDiv.classList.remove('text-red-500');
+                    statusDiv.classList.add('text-green-500');
+                } else {
+                   throw new Error('El servidor rechazó la actualización.');
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error al enviar: ${error.message}`;
+                statusDiv.classList.add('text-red-500');
+            }
+        }
+
+        // Iniciar el rastreo
+        startButton.addEventListener('click', () => {
+            if (!motoSelect.value) {
+                alert('Por favor, selecciona una moto.');
+                return;
+            }
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(sendLocation, 
+                    (error) => statusDiv.textContent = `Error de GPS: ${error.message}`,
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+                startButton.style.display = 'none';
+                stopButton.style.display = 'block';
+                statusDiv.textContent = 'Rastreo activado. Moviéndose...';
+            } else {
+                alert('Tu navegador no soporta geolocalización.');
+            }
+        });
+
+        // Detener el rastreo
+        stopButton.addEventListener('click', () => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                startButton.style.display = 'block';
+                stopButton.style.display = 'none';
+                statusDiv.textContent = 'Rastreo detenido.';
+                statusDiv.classList.remove('text-green-500', 'text-red-500');
+            }
+        });
+    </script>
+</body>
+</html>
