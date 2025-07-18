@@ -18,196 +18,80 @@
 
         <div class="space-y-4">
             <div>
-                <label for="apiUrl" class="block text-sm font-medium text-gray-300 mb-1 text-left">URL de la API</label>
-                <input type="text" id="apiUrl" value="https://57921d4365a0.ngrok-free.app/api" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm">
+                <label for="motoSelect" class="block text-sm font-medium text-gray-300 mb-1 text-left">Seleccionar Moto</label>
+                <select id="motoSelect" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"></select>
             </div>
             <div>
                 <label for="tokenInput" class="block text-sm font-medium text-gray-300 mb-1 text-left">Token de Autenticación (JWT)</label>
                 <input type="text" id="tokenInput" placeholder="Pega el token JWT aquí" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
             </div>
-            <div>
-                <label for="motoSelect" class="block text-sm font-medium text-gray-300 mb-1 text-left">Seleccionar Moto</label>
-                <select id="motoSelect" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
-                    <option value="">-- Primero ingresa el token --</option>
-                </select>
-            </div>
         </div>
 
-        <div class="flex gap-2 mt-6">
-            <button id="testConnectionButton" class="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">
-                Probar Conexión
-            </button>
-            <button id="loadMotosButton" class="flex-1 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-transform transform hover:scale-105">
-                Cargar Motos
-            </button>
-        </div>
-
-        <button id="startButton" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-transform transform hover:scale-105 mt-4">
+        <button id="startButton" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-transform transform hover:scale-105 mt-8">
             Iniciar Rastreo
         </button>
         <button id="stopButton" class="w-full bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 transition-transform transform hover:scale-105 mt-4" style="display: none;">
             Detener Rastreo
         </button>
-
-        <div id="status" class="mt-6 text-sm text-gray-400 min-h-12 p-2 bg-gray-700 rounded-lg">
-            Esperando para iniciar...
-        </div>
-
-        <div id="debugInfo" class="mt-4 text-xs text-gray-500 bg-gray-700 p-3 rounded-lg max-h-32 overflow-y-auto" style="display: none;">
-            <div class="font-semibold mb-2">Información de Debug:</div>
-            <div id="debugContent"></div>
+        <div id="status" class="mt-6 text-sm text-gray-400 h-10">
+            Ingresa un token para cargar las motos.
         </div>
     </div>
 
     <script>
-        const apiUrlInput = document.getElementById('apiUrl');
         const motoSelect = document.getElementById('motoSelect');
         const tokenInput = document.getElementById('tokenInput');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const statusDiv = document.getElementById('status');
-        const testConnectionButton = document.getElementById('testConnectionButton');
-        const loadMotosButton = document.getElementById('loadMotosButton');
-        const debugInfo = document.getElementById('debugInfo');
-        const debugContent = document.getElementById('debugContent');
         let watchId = null;
-        let updateInterval = null;
 
-        function updateStatus(message, type = 'info') {
-            statusDiv.textContent = message;
-            statusDiv.classList.remove('text-red-500', 'text-green-500', 'text-yellow-500', 'text-blue-500');
-            
-            switch(type) {
-                case 'error':
-                    statusDiv.classList.add('text-red-500');
-                    break;
-                case 'success':
-                    statusDiv.classList.add('text-green-500');
-                    break;
-                case 'warning':
-                    statusDiv.classList.add('text-yellow-500');
-                    break;
-                case 'info':
-                    statusDiv.classList.add('text-blue-500');
-                    break;
-            }
-        }
-
-        function addDebugInfo(info) {
-            const timestamp = new Date().toLocaleTimeString();
-            debugContent.innerHTML += `<div class="mb-1">[${timestamp}] ${info}</div>`;
-            debugInfo.scrollTop = debugInfo.scrollHeight;
-        }
-
-        function showDebugInfo() {
-            debugInfo.style.display = 'block';
-        }
-
-        async function makeRequest(url, options = {}) {
-            const token = tokenInput.value.trim();
-            if (!token) {
-                throw new Error('Token de autenticación requerido');
-            }
-
-            const defaultOptions = {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'ngrok-skip-browser-warning': 'true'
-                }
-            };
-
-            const mergedOptions = {
-                ...defaultOptions,
-                ...options,
-                headers: {
-                    ...defaultOptions.headers,
-                    ...options.headers
-                }
-            };
-
-            addDebugInfo(`Enviando petición a: ${url}`);
-            addDebugInfo(`Método: ${mergedOptions.method || 'GET'}`);
-            addDebugInfo(`Headers: ${JSON.stringify(mergedOptions.headers)}`);
-
-            const response = await fetch(url, mergedOptions);
-            
-            addDebugInfo(`Respuesta - Status: ${response.status}`);
-            addDebugInfo(`Respuesta - Headers: ${JSON.stringify(Object.fromEntries(response.headers))}`);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                addDebugInfo(`Error - Texto: ${errorText}`);
-                throw new Error(`HTTP ${response.status}: ${errorText}`);
-            }
-
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                const data = await response.json();
-                addDebugInfo(`Respuesta JSON: ${JSON.stringify(data)}`);
-                return data;
-            } else {
-                const text = await response.text();
-                addDebugInfo(`Respuesta texto: ${text}`);
-                throw new Error(`Respuesta no es JSON válido. Content-Type: ${contentType}`);
-            }
-        }
-
-        // Probar conexión
-        testConnectionButton.addEventListener('click', async () => {
-            if (!tokenInput.value.trim()) {
-                alert('Por favor, ingresa el token de autenticación.');
-                return;
-            }
-
-            showDebugInfo();
-            updateStatus('Probando conexión...', 'info');
-            
-            try {
-                const apiUrl = apiUrlInput.value.trim();
-                await makeRequest(`${apiUrl}/rastreo`);
-                updateStatus('Conexión exitosa', 'success');
-            } catch (error) {
-                updateStatus(`Error de conexión: ${error.message}`, 'error');
-                addDebugInfo(`Error completo: ${error.stack}`);
-            }
-        });
+        const API_BASE_URL = 'https://<ID_ALEATORIO>.ngrok-free.app/api'; // <-- ¡RECUERDA PONER TU URL DE NGROK FIJA AQUÍ!
+        const TOKEN_KEY = 'blackmotos_gps_simulator_jwt'; // Clave para guardar en localStorage
 
         // Función para obtener la lista de motos
         async function fetchMotos() {
-            if (!tokenInput.value.trim()) {
+            const token = tokenInput.value.trim();
+            if (!token) {
                 alert('Por favor, ingresa el token de autenticación.');
                 return;
             }
-
-            showDebugInfo();
-            updateStatus('Cargando motos...', 'info');
-            
             try {
-                const apiUrl = apiUrlInput.value.trim();
-                const motos = await makeRequest(`${apiUrl}/rastreo`);
+                statusDiv.textContent = 'Cargando motos...';
+                const response = await fetch(`${API_BASE_URL}/rastreo`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('No se pudo obtener la lista de motos. Revisa el token.');
                 
+                const motos = await response.json();
                 motoSelect.innerHTML = '<option value="">-- Selecciona una moto --</option>';
+                motos.forEach(moto => {
+                    const option = document.createElement('option');
+                    option.value = moto.id;
+                    option.textContent = `${moto.marca} ${moto.modelo} (${moto.placa})`;
+                    motoSelect.appendChild(option);
+                });
                 
-                if (Array.isArray(motos) && motos.length > 0) {
-                    motos.forEach(moto => {
-                        const option = document.createElement('option');
-                        option.value = moto.id;
-                        option.textContent = `${moto.marca} ${moto.modelo} (${moto.placa})`;
-                        motoSelect.appendChild(option);
-                    });
-                    updateStatus(`${motos.length} motos cargadas`, 'success');
-                } else {
-                    updateStatus('No se encontraron motos', 'warning');
-                }
+                // Guardar el token exitoso en localStorage
+                localStorage.setItem(TOKEN_KEY, token);
+                statusDiv.textContent = 'Motos cargadas. Listo para iniciar.';
             } catch (error) {
-                updateStatus(`Error al cargar motos: ${error.message}`, 'error');
-                addDebugInfo(`Error completo: ${error.stack}`);
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.classList.add('text-red-500');
             }
         }
 
+        // Al cargar la página, intentar recuperar el token guardado
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedToken = localStorage.getItem(TOKEN_KEY);
+            if (savedToken) {
+                tokenInput.value = savedToken;
+                fetchMotos(); // Intentar cargar las motos automáticamente
+            }
+        });
+
         // Cargar motos
-        loadMotosButton.addEventListener('click', fetchMotos);
+        tokenInput.addEventListener('change', fetchMotos);
 
         // Función para enviar la ubicación
         async function sendLocation(position) {
