@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="images/logo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlackMotos - Simulador GPS</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -37,11 +38,7 @@
             Ingresa un token para cargar las motos.
         </div>
         
-        <!-- Debug info -->
-        <div id="debugInfo" class="mt-4 text-xs text-gray-500 bg-gray-700 p-3 rounded hidden max-h-32 overflow-y-auto">
-            <strong>Debug Info:</strong>
-            <div id="debugContent"></div>
-        </div>
+
     </div>
 
     <script>
@@ -50,23 +47,21 @@
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const statusDiv = document.getElementById('status');
-        const debugInfo = document.getElementById('debugInfo');
-        const debugContent = document.getElementById('debugContent');
         let watchId = null;
         let updateInterval = null;
 
         const API_BASE_URL = 'https://142807f8917d.ngrok-free.app/api'; // <-- ¡RECUERDA PONER TU URL DE NGROK FIJA AQUÍ!
         const TOKEN_KEY = 'blackmotos_gps_simulator_jwt'; // Clave para guardar en localStorage
 
-        // Función para mostrar información de debug
+        // Función para mostrar información de debug (deshabilitada para producción)
         function showDebugInfo() {
-            debugInfo.classList.remove('hidden');
+            // debugInfo.classList.remove('hidden');
         }
 
         function addDebugInfo(message) {
-            const timestamp = new Date().toLocaleTimeString();
-            debugContent.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-            debugContent.scrollTop = debugContent.scrollHeight;
+            // const timestamp = new Date().toLocaleTimeString();
+            // debugContent.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            // debugContent.scrollTop = debugContent.scrollHeight;
         }
 
         function updateStatus(message, type = 'info') {
@@ -102,16 +97,16 @@
                 finalOptions.headers = { ...defaultOptions.headers, ...options.headers };
             }
 
-            addDebugInfo(`Haciendo petición: ${finalOptions.method} ${url}`);
+            // addDebugInfo(`Haciendo petición: ${finalOptions.method} ${url}`);
             
             try {
                 const response = await fetch(url, finalOptions);
                 
-                addDebugInfo(`Respuesta recibida: ${response.status} ${response.statusText}`);
+                // addDebugInfo(`Respuesta recibida: ${response.status} ${response.statusText}`);
                 
                 // Obtener el texto de la respuesta primero
                 const responseText = await response.text();
-                addDebugInfo(`Contenido de respuesta: ${responseText.substring(0, 200)}...`);
+                // addDebugInfo(`Contenido de respuesta: ${responseText.substring(0, 200)}...`);
                 
                 if (!response.ok) {
                     throw new Error(`Error HTTP ${response.status}: ${response.statusText}. Contenido: ${responseText.substring(0, 100)}`);
@@ -121,11 +116,11 @@
                 try {
                     return JSON.parse(responseText);
                 } catch (jsonError) {
-                    addDebugInfo(`Error al parsear JSON: ${jsonError.message}`);
+                    // addDebugInfo(`Error al parsear JSON: ${jsonError.message}`);
                     throw new Error(`Respuesta no es JSON válido. Contenido recibido: ${responseText.substring(0, 100)}`);
                 }
             } catch (error) {
-                addDebugInfo(`Error en petición: ${error.message}`);
+                // addDebugInfo(`Error en petición: ${error.message}`);
                 throw error;
             }
         }
@@ -139,9 +134,9 @@
             }
             
             try {
-                showDebugInfo();
+                // showDebugInfo();
                 updateStatus('Cargando motos...', 'info');
-                addDebugInfo('Iniciando carga de motos...');
+                // addDebugInfo('Iniciando carga de motos...');
                 
                 const motos = await makeRequest(`${API_BASE_URL}/rastreo`);
                 
@@ -158,15 +153,15 @@
                     // Guardar el token exitoso
                     localStorage.setItem(TOKEN_KEY, token);
                     updateStatus('Motos cargadas. Listo para iniciar.', 'success');
-                    addDebugInfo(`${motos.length} motos cargadas exitosamente`);
+                    // addDebugInfo(`${motos.length} motos cargadas exitosamente`);
                 } else {
                     updateStatus('No se encontraron motos.', 'error');
-                    addDebugInfo('Respuesta vacía o sin motos');
+                    // addDebugInfo('Respuesta vacía o sin motos');
                 }
                 
             } catch (error) {
                 updateStatus(`Error: ${error.message}`, 'error');
-                addDebugInfo(`Error al cargar motos: ${error.message}`);
+                // addDebugInfo(`Error al cargar motos: ${error.message}`);
             }
         }
 
@@ -197,10 +192,10 @@
                 });
                 
                 updateStatus(`Ubicación enviada: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`, 'success');
-                addDebugInfo(`Ubicación enviada para moto ${motoId}: ${latitude}, ${longitude}`);
+                // addDebugInfo(`Ubicación enviada para moto ${motoId}: ${latitude}, ${longitude}`);
             } catch (error) {
                 updateStatus(`Error al enviar ubicación: ${error.message}`, 'error');
-                addDebugInfo(`Error al enviar ubicación: ${error.message}`);
+                // addDebugInfo(`Error al enviar ubicación: ${error.message}`);
             }
         }
 
@@ -217,13 +212,13 @@
             }
 
             if (navigator.geolocation) {
-                showDebugInfo();
+                // showDebugInfo();
                 
                 watchId = navigator.geolocation.watchPosition(
                     sendLocation,
                     (error) => {
                         updateStatus(`Error de GPS: ${error.message}`, 'error');
-                        addDebugInfo(`Error GPS: ${error.code} - ${error.message}`);
+                        // addDebugInfo(`Error GPS: ${error.code} - ${error.message}`);
                     },
                     { 
                         enableHighAccuracy: true, 
@@ -235,7 +230,7 @@
                 startButton.style.display = 'none';
                 stopButton.style.display = 'block';
                 updateStatus('Rastreo activado. Obteniendo ubicación...', 'info');
-                addDebugInfo('Rastreo GPS iniciado');
+                // addDebugInfo('Rastreo GPS iniciado');
             } else {
                 alert('Tu navegador no soporta geolocalización.');
             }
@@ -256,7 +251,7 @@
             startButton.style.display = 'block';
             stopButton.style.display = 'none';
             updateStatus('Rastreo detenido.', 'info');
-            addDebugInfo('Rastreo detenido por el usuario');
+            // addDebugInfo('Rastreo detenido por el usuario');
         });
 
         // Auto-cargar motos cuando se pegue un token
